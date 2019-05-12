@@ -12,8 +12,8 @@ import (
 )
 
 func init() {
-	viewCmd.Flags().StringVarP(&selector, "selector", "s", "", "The selector key/value pair used to create a SelectorSyncSet")
-	viewCmd.Flags().StringVarP(&clusterName, "cluster-name", "c", "", "The cluster name used to create a SyncSet")
+	viewCmd.Flags().StringVarP(&selector, "selector", "s", "", "The selector key/value pair used to match the SelectorSyncSet to Cluster(s)")
+	viewCmd.Flags().StringVarP(&clusterName, "cluster-name", "c", "", "The cluster name used to match the SyncSet to a Cluster")
 	viewCmd.Flags().StringVarP(&path, "path", "p", ".", "The path of the manifest files to use")
 	RootCmd.AddCommand(viewCmd)
 }

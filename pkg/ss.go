@@ -2,7 +2,6 @@ package pkg
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -24,7 +23,6 @@ func loadResources(path string) ([]runtime.RawExtension, error) {
 				return err
 			}
 			if strings.HasSuffix(p, ".yaml") {
-				fmt.Println(p)
 				data, err := ioutil.ReadFile(p)
 				if err != nil {
 					return err
@@ -56,7 +54,7 @@ func CreateSelectorSyncSet(name string, selector string, path string) v1alpha1.S
 	var syncSet = &v1alpha1.SelectorSyncSet{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "SelectorSyncSet",
-			APIVersion: "v1alpha1",
+			APIVersion: "hive.openshift.io/v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -83,7 +81,7 @@ func CreateSyncSet(name string, clusterName string, path string) v1alpha1.SyncSe
 	var syncSet = &v1alpha1.SyncSet{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "SyncSet",
-			APIVersion: "v1alpha1",
+			APIVersion: "hive.openshift.io/v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
