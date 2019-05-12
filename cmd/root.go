@@ -33,6 +33,9 @@ var viewCmd = &cobra.Command{
 		if selector == "" && clusterName == "" {
 			return errors.New("one of --selector or --cluster-name must be specified")
 		}
+		if selector != "" && clusterName != "" {
+			return errors.New("only one of --selector or --cluster-name can be specified")
+		}
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
