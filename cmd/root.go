@@ -14,11 +14,12 @@ import (
 func init() {
 	viewCmd.Flags().StringVarP(&selector, "selector", "s", "", "The selector key/value pair used to match the SelectorSyncSet to Cluster(s)")
 	viewCmd.Flags().StringVarP(&clusterName, "cluster-name", "c", "", "The cluster name used to match the SyncSet to a Cluster")
-	viewCmd.Flags().StringVarP(&path, "path", "p", ".", "The path of the manifest files to use")
+	viewCmd.Flags().StringVarP(&resources, "resources", "r", "", "The directory of resource manifest files to use")
+	viewCmd.Flags().StringVarP(&patches, "patches", "p", "", "The directory of patch manifest files to use")
 	RootCmd.AddCommand(viewCmd)
 }
 
-var selector, clusterName, path, name string
+var selector, clusterName, resources, patches, name string
 
 var RootCmd = &cobra.Command{
 	Use:   "ss",
@@ -36,12 +37,15 @@ var viewCmd = &cobra.Command{
 		if selector != "" && clusterName != "" {
 			return errors.New("only one of --selector or --cluster-name can be specified")
 		}
+		if len(args) < 1 {
+			return errors.New("name must be specified")
+		}
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if clusterName != "" {
 			var ss v1alpha1.SyncSet
-			ss = pkg.CreateSyncSet(args[0], clusterName, path)
+			ss = pkg.CreateSyncSet(args[0], clusterName, resources, patches)
 			j, err := json.MarshalIndent(&ss, "", "    ")
 			if err != nil {
 				log.Fatalf("error: %v", err)
@@ -49,7 +53,7 @@ var viewCmd = &cobra.Command{
 			fmt.Printf("%s\n\n", string(j))
 		} else {
 			var ss v1alpha1.SelectorSyncSet
-			ss = pkg.CreateSelectorSyncSet(args[0], selector, path)
+			ss = pkg.CreateSelectorSyncSet(args[0], selector, resources, patches)
 			j, err := json.MarshalIndent(&ss, "", "    ")
 			if err != nil {
 				log.Fatalf("error: %v", err)

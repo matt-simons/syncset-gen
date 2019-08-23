@@ -17,6 +17,9 @@ import (
 
 func loadResources(path string) ([]runtime.RawExtension, error) {
 	var resources = []runtime.RawExtension{}
+	if path == "" {
+		return resources, nil
+	}
 	err := filepath.Walk(path,
 		func(p string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -40,8 +43,41 @@ func loadResources(path string) ([]runtime.RawExtension, error) {
 	return resources, err
 }
 
-func CreateSelectorSyncSet(name string, selector string, path string) v1alpha1.SelectorSyncSet {
-	resources, err := loadResources(path)
+func loadPatches(path string) ([]v1alpha1.SyncObjectPatch, error) {
+	var patches = []v1alpha1.SyncObjectPatch{}
+	if path == "" {
+		return patches, nil
+	}
+	err := filepath.Walk(path,
+		func(p string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if strings.HasSuffix(p, ".yaml") {
+				data, err := ioutil.ReadFile(p)
+				if err != nil {
+					return err
+				}
+				jsonBytes, err := yaml.YAMLToJSON(data)
+				if err != nil {
+					return err
+				}
+				var p = v1alpha1.SyncObjectPatch{}
+				json.Unmarshal(jsonBytes, &p)
+				patches = append(patches, p)
+			}
+			return nil
+		})
+	return patches, err
+}
+
+func CreateSelectorSyncSet(name string, selector string, resourcesPath string, patchesPath string) v1alpha1.SelectorSyncSet {
+	resources, err := loadResources(resourcesPath)
+	if err != nil {
+		log.Println(err)
+	}
+
+	patches, err := loadPatches(patchesPath)
 	if err != nil {
 		log.Println(err)
 	}
@@ -59,12 +95,13 @@ func CreateSelectorSyncSet(name string, selector string, path string) v1alpha1.S
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Labels: map[string]string{
-				"atlas.worldpay.com/generated": "true",
+				"generated": "true",
 			},
 		},
 		Spec: v1alpha1.SelectorSyncSetSpec{
 			SyncSetCommonSpec: v1alpha1.SyncSetCommonSpec{
 				Resources:         resources,
+				Patches:           patches,
 				ResourceApplyMode: "Sync",
 			},
 			ClusterDeploymentSelector: *labelSelector,
@@ -72,8 +109,13 @@ func CreateSelectorSyncSet(name string, selector string, path string) v1alpha1.S
 	}
 	return *syncSet
 }
-func CreateSyncSet(name string, clusterName string, path string) v1alpha1.SyncSet {
-	resources, err := loadResources(path)
+func CreateSyncSet(name string, clusterName string, resourcesPath string, patchesPath string) v1alpha1.SyncSet {
+	resources, err := loadResources(resourcesPath)
+	if err != nil {
+		log.Println(err)
+	}
+
+	patches, err := loadPatches(patchesPath)
 	if err != nil {
 		log.Println(err)
 	}
@@ -86,12 +128,13 @@ func CreateSyncSet(name string, clusterName string, path string) v1alpha1.SyncSe
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Labels: map[string]string{
-				"atlas.worldpay.com/generated": "true",
+				"generated": "true",
 			},
 		},
 		Spec: v1alpha1.SyncSetSpec{
 			SyncSetCommonSpec: v1alpha1.SyncSetCommonSpec{
 				Resources:         resources,
+				Patches:           patches,
 				ResourceApplyMode: "Sync",
 			},
 			ClusterDeploymentRefs: []corev1.LocalObjectReference{
