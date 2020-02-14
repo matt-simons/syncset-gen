@@ -44,6 +44,14 @@ var viewCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if clusterName != "" {
+			secrets := pkg.TransformSecrets(args[0], "ss", resources)
+			for _, s := range secrets {
+				j, err := json.MarshalIndent(&s, "", "    ")
+				if err != nil {
+					log.Fatalf("error: %v", err)
+				}
+				fmt.Printf("%s\n", string(j))
+			}
 			var ss v1alpha1.SyncSet
 			ss = pkg.CreateSyncSet(args[0], clusterName, resources, patches)
 			j, err := json.MarshalIndent(&ss, "", "    ")
@@ -52,6 +60,14 @@ var viewCmd = &cobra.Command{
 			}
 			fmt.Printf("%s\n\n", string(j))
 		} else {
+			secrets := pkg.TransformSecrets(args[0], "sss", resources)
+			for _, s := range secrets {
+				j, err := json.MarshalIndent(&s, "", "    ")
+				if err != nil {
+					log.Fatalf("error: %v", err)
+				}
+				fmt.Printf("%s\n", string(j))
+			}
 			var ss v1alpha1.SelectorSyncSet
 			ss = pkg.CreateSelectorSyncSet(args[0], selector, resources, patches)
 			j, err := json.MarshalIndent(&ss, "", "    ")
