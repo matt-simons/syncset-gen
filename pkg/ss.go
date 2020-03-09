@@ -10,15 +10,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
+	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/yaml"
 )
 
-func loadSecrets(name, prefix, path string) ([]hivev1alpha1.SecretReference, error) {
-	var secrets = []hivev1alpha1.SecretReference{}
+func loadSecrets(name, prefix, path string) ([]hivev1.SecretMapping, error) {
+	var secrets = []hivev1.SecretMapping{}
 	if path == "" {
 		return secrets, nil
 	}
@@ -52,12 +52,12 @@ func loadSecrets(name, prefix, path string) ([]hivev1alpha1.SecretReference, err
 					if !ok {
 						return errors.New("Could not read metadata.namespace of " + p)
 					}
-					secret := hivev1alpha1.SecretReference{
-						Source: corev1.ObjectReference{
+					secret := hivev1.SecretMapping{
+						SourceRef: hivev1.SecretReference{
 							Namespace: "remote-secrets",
 							Name:      fmt.Sprintf("%s-%s-%s-%s", prefix, name, ns, n),
 						},
-						Target: corev1.ObjectReference{
+						TargetRef: hivev1.SecretReference{
 							Namespace: ns,
 							Name:      n,
 						},
@@ -106,8 +106,8 @@ func loadResources(path string) ([]runtime.RawExtension, error) {
 	return resources, err
 }
 
-func loadPatches(path string) ([]hivev1alpha1.SyncObjectPatch, error) {
-	var patches = []hivev1alpha1.SyncObjectPatch{}
+func loadPatches(path string) ([]hivev1.SyncObjectPatch, error) {
+	var patches = []hivev1.SyncObjectPatch{}
 	if path == "" {
 		return patches, nil
 	}
@@ -125,7 +125,7 @@ func loadPatches(path string) ([]hivev1alpha1.SyncObjectPatch, error) {
 				if err != nil {
 					return err
 				}
-				var p = hivev1alpha1.SyncObjectPatch{}
+				var p = hivev1.SyncObjectPatch{}
 				json.Unmarshal(jsonBytes, &p)
 				patches = append(patches, p)
 			}
@@ -181,7 +181,7 @@ func TransformSecrets(name, prefix, path string) []corev1.Secret {
 	return secrets
 }
 
-func CreateSelectorSyncSet(name string, selector string, resourcesPath string, patchesPath string) hivev1alpha1.SelectorSyncSet {
+func CreateSelectorSyncSet(name string, selector string, resourcesPath string, patchesPath string) hivev1.SelectorSyncSet {
 	resources, err := loadResources(resourcesPath)
 	if err != nil {
 		log.Println(err)
@@ -202,10 +202,10 @@ func CreateSelectorSyncSet(name string, selector string, resourcesPath string, p
 		log.Println(err)
 	}
 
-	var syncSet = &hivev1alpha1.SelectorSyncSet{
+	var syncSet = &hivev1.SelectorSyncSet{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "SelectorSyncSet",
-			APIVersion: "hive.openshift.io/v1alpha1",
+			APIVersion: "hive.openshift.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -213,12 +213,12 @@ func CreateSelectorSyncSet(name string, selector string, resourcesPath string, p
 				"generated": "true",
 			},
 		},
-		Spec: hivev1alpha1.SelectorSyncSetSpec{
-			SyncSetCommonSpec: hivev1alpha1.SyncSetCommonSpec{
+		Spec: hivev1.SelectorSyncSetSpec{
+			SyncSetCommonSpec: hivev1.SyncSetCommonSpec{
 				Resources:         resources,
 				Patches:           patches,
 				ResourceApplyMode: "Sync",
-				SecretReferences:  secrets,
+				Secrets:           secrets,
 			},
 			ClusterDeploymentSelector: *labelSelector,
 		},
@@ -226,7 +226,7 @@ func CreateSelectorSyncSet(name string, selector string, resourcesPath string, p
 	return *syncSet
 }
 
-func CreateSyncSet(name string, clusterName string, resourcesPath string, patchesPath string) hivev1alpha1.SyncSet {
+func CreateSyncSet(name string, clusterName string, resourcesPath string, patchesPath string) hivev1.SyncSet {
 	resources, err := loadResources(resourcesPath)
 	if err != nil {
 		log.Println(err)
@@ -242,10 +242,10 @@ func CreateSyncSet(name string, clusterName string, resourcesPath string, patche
 		log.Println(err)
 	}
 
-	var syncSet = &hivev1alpha1.SyncSet{
+	var syncSet = &hivev1.SyncSet{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "SyncSet",
-			APIVersion: "hive.openshift.io/v1alpha1",
+			Kind:       "SelectorSyncSet",
+			APIVersion: "hive.openshift.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -253,12 +253,12 @@ func CreateSyncSet(name string, clusterName string, resourcesPath string, patche
 				"generated": "true",
 			},
 		},
-		Spec: hivev1alpha1.SyncSetSpec{
-			SyncSetCommonSpec: hivev1alpha1.SyncSetCommonSpec{
+		Spec: hivev1.SyncSetSpec{
+			SyncSetCommonSpec: hivev1.SyncSetCommonSpec{
 				Resources:         resources,
 				Patches:           patches,
 				ResourceApplyMode: "Sync",
-				SecretReferences:  secrets,
+				Secrets:           secrets,
 			},
 			ClusterDeploymentRefs: []corev1.LocalObjectReference{
 				corev1.LocalObjectReference{

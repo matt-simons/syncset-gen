@@ -7,7 +7,7 @@ import (
 	"log"
 
 	"github.com/matt-simons/ss/pkg"
-	"github.com/openshift/hive/pkg/apis/hive/v1alpha1"
+	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 	"github.com/spf13/cobra"
 )
 
@@ -52,7 +52,7 @@ var viewCmd = &cobra.Command{
 				}
 				fmt.Printf("%s\n", string(j))
 			}
-			var ss v1alpha1.SyncSet
+			var ss hivev1.SyncSet
 			ss = pkg.CreateSyncSet(args[0], clusterName, resources, patches)
 			j, err := json.MarshalIndent(&ss, "", "    ")
 			if err != nil {
@@ -68,7 +68,7 @@ var viewCmd = &cobra.Command{
 				}
 				fmt.Printf("%s\n", string(j))
 			}
-			var ss v1alpha1.SelectorSyncSet
+			var ss hivev1.SelectorSyncSet
 			ss = pkg.CreateSelectorSyncSet(args[0], selector, resources, patches)
 			j, err := json.MarshalIndent(&ss, "", "    ")
 			if err != nil {
