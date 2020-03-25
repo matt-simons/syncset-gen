@@ -244,7 +244,7 @@ func CreateSyncSet(name string, clusterName string, resourcesPath string, patche
 
 	var syncSet = &hivev1.SyncSet{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "SelectorSyncSet",
+			Kind:       "SyncSet",
 			APIVersion: "hive.openshift.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
