@@ -9,6 +9,7 @@ import (
 	"github.com/matt-simons/ss/pkg"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 	"github.com/spf13/cobra"
+	"sigs.k8s.io/yaml"
 )
 
 func init() {
@@ -16,10 +17,13 @@ func init() {
 	viewCmd.Flags().StringVarP(&clusterName, "cluster-name", "c", "", "The cluster name used to match the SyncSet to a Cluster")
 	viewCmd.Flags().StringVarP(&resources, "resources", "r", "", "The directory of resource manifest files to use")
 	viewCmd.Flags().StringVarP(&patches, "patches", "p", "", "The directory of patch manifest files to use")
+	viewCmd.Flags().StringVarP(&output, "output", "o", "json", "Output format. One of: json|yaml")
 	RootCmd.AddCommand(viewCmd)
 }
 
-var selector, clusterName, resources, patches, name string
+var selector, clusterName, resources, patches, name, output string
+
+var outputPrinters = []string{"json", "yaml"}
 
 var RootCmd = &cobra.Command{
 	Use:   "ss",
@@ -39,6 +43,10 @@ var viewCmd = &cobra.Command{
 		}
 		if len(args) < 1 {
 			return errors.New("name must be specified")
+		}
+		if !contains(outputPrinters, output) {
+			return fmt.Errorf("unable to match a printer suitable for the output format %s allowed formats are: %v",
+				output, outputPrinters)
 		}
 		return nil
 	},
@@ -70,11 +78,33 @@ var viewCmd = &cobra.Command{
 			}
 			var ss hivev1.SelectorSyncSet
 			ss = pkg.CreateSelectorSyncSet(args[0], selector, resources, patches)
-			j, err := json.MarshalIndent(&ss, "", "    ")
-			if err != nil {
-				log.Fatalf("error: %v", err)
-			}
-			fmt.Printf("%s\n\n", string(j))
+			fmt.Printf("%s\n\n", getOutputStr(ss))
 		}
 	},
+}
+
+// getOutputStr returns the output as json or yaml string
+func getOutputStr(ss hivev1.SelectorSyncSet) string {
+	var b []byte
+	var err error
+	switch o := output; o {
+	case "yaml":
+		b, err = yaml.Marshal(&ss)
+	default:
+		b, err = json.MarshalIndent(&ss, "", "    ")
+	}
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+	return string(b)
+}
+
+// contains tells whether array a contains member x.
+func contains(a []string, x string) bool {
+	for _, n := range a {
+		if x == n {
+			return true
+		}
+	}
+	return false
 }
