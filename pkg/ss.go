@@ -17,13 +17,13 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-func loadSecrets(name, prefix, path string) ([]hivev1.SecretMapping, error) {
+func loadSecrets(name, prefix, paths string) ([]hivev1.SecretMapping, error) {
 	var secrets = []hivev1.SecretMapping{}
-	if path == "" {
+	if paths == "" {
 		return secrets, nil
 	}
-	err := filepath.Walk(path,
-		func(p string, info os.FileInfo, err error) error {
+	for _, path := range strings.Split(paths, ",") {
+		err := filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
@@ -67,16 +67,20 @@ func loadSecrets(name, prefix, path string) ([]hivev1.SecretMapping, error) {
 			}
 			return nil
 		})
-	return secrets, err
+		if err != nil {
+			return secrets, err
+		}
+	}
+	return secrets, nil
 }
 
-func loadResources(path string) ([]runtime.RawExtension, error) {
+func loadResources(paths string) ([]runtime.RawExtension, error) {
 	var resources = []runtime.RawExtension{}
-	if path == "" {
+	if paths == "" {
 		return resources, nil
 	}
-	err := filepath.Walk(path,
-		func(p string, info os.FileInfo, err error) error {
+	for _, path := range strings.Split(paths, ",") {
+		err := filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
@@ -103,16 +107,20 @@ func loadResources(path string) ([]runtime.RawExtension, error) {
 			}
 			return nil
 		})
-	return resources, err
+		if err != nil {
+			return resources, err
+		}
+	}
+	return resources, nil
 }
 
-func loadPatches(path string) ([]hivev1.SyncObjectPatch, error) {
+func loadPatches(paths string) ([]hivev1.SyncObjectPatch, error) {
 	var patches = []hivev1.SyncObjectPatch{}
-	if path == "" {
+	if paths == "" {
 		return patches, nil
 	}
-	err := filepath.Walk(path,
-		func(p string, info os.FileInfo, err error) error {
+	for _, path := range strings.Split(paths, ",") {
+		err := filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
@@ -131,16 +139,20 @@ func loadPatches(path string) ([]hivev1.SyncObjectPatch, error) {
 			}
 			return nil
 		})
-	return patches, err
+		if err != nil {
+			return patches, err
+		}
+	}
+	return patches, nil
 }
 
-func TransformSecrets(name, prefix, path string) []corev1.Secret {
+func TransformSecrets(name, prefix, paths string) []corev1.Secret {
 	var secrets = []corev1.Secret{}
-	if path == "" {
+	if paths == "" {
 		return nil
 	}
-	err := filepath.Walk(path,
-		func(p string, info os.FileInfo, err error) error {
+	for _, path := range strings.Split(paths, ",") {
+		err := filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
@@ -175,13 +187,14 @@ func TransformSecrets(name, prefix, path string) []corev1.Secret {
 			}
 			return nil
 		})
-	if err != nil {
-		log.Println(err)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 	return secrets
 }
 
-func CreateSelectorSyncSet(name string, selector string, resourcesPath string, patchesPath string) hivev1.SelectorSyncSet {
+func CreateSelectorSyncSet(name, selector, resourcesPath, patchesPath, applyMode string) hivev1.SelectorSyncSet {
 	resources, err := loadResources(resourcesPath)
 	if err != nil {
 		log.Println(err)
@@ -217,7 +230,7 @@ func CreateSelectorSyncSet(name string, selector string, resourcesPath string, p
 			SyncSetCommonSpec: hivev1.SyncSetCommonSpec{
 				Resources:         resources,
 				Patches:           patches,
-				ResourceApplyMode: "Sync",
+				ResourceApplyMode: hivev1.SyncSetResourceApplyMode(applyMode),
 				Secrets:           secrets,
 			},
 			ClusterDeploymentSelector: *labelSelector,
@@ -226,7 +239,7 @@ func CreateSelectorSyncSet(name string, selector string, resourcesPath string, p
 	return *syncSet
 }
 
-func CreateSyncSet(name string, clusterName string, resourcesPath string, patchesPath string) hivev1.SyncSet {
+func CreateSyncSet(name, clusterName, resourcesPath, patchesPath, applyMode string) hivev1.SyncSet {
 	resources, err := loadResources(resourcesPath)
 	if err != nil {
 		log.Println(err)
@@ -257,7 +270,7 @@ func CreateSyncSet(name string, clusterName string, resourcesPath string, patche
 			SyncSetCommonSpec: hivev1.SyncSetCommonSpec{
 				Resources:         resources,
 				Patches:           patches,
-				ResourceApplyMode: "Sync",
+				ResourceApplyMode: hivev1.SyncSetResourceApplyMode(applyMode),
 				Secrets:           secrets,
 			},
 			ClusterDeploymentRefs: []corev1.LocalObjectReference{

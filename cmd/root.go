@@ -16,10 +16,11 @@ func init() {
 	viewCmd.Flags().StringVarP(&clusterName, "cluster-name", "c", "", "The cluster name used to match the SyncSet to a Cluster")
 	viewCmd.Flags().StringVarP(&resources, "resources", "r", "", "The directory of resource manifest files to use")
 	viewCmd.Flags().StringVarP(&patches, "patches", "p", "", "The directory of patch manifest files to use")
+	viewCmd.Flags().StringVarP(&applyMode, "apply-mode", "a", "Sync", "One of 'Upsert' or 'Sync'")
 	RootCmd.AddCommand(viewCmd)
 }
 
-var selector, clusterName, resources, patches, name string
+var selector, clusterName, resources, patches, applyMode, name string
 
 var RootCmd = &cobra.Command{
 	Use:   "ss",
@@ -53,7 +54,7 @@ var viewCmd = &cobra.Command{
 				fmt.Printf("%s\n", string(j))
 			}
 			var ss hivev1.SyncSet
-			ss = pkg.CreateSyncSet(args[0], clusterName, resources, patches)
+			ss = pkg.CreateSyncSet(args[0], clusterName, resources, patches, applyMode)
 			j, err := json.MarshalIndent(&ss, "", "    ")
 			if err != nil {
 				log.Fatalf("error: %v", err)
@@ -69,7 +70,7 @@ var viewCmd = &cobra.Command{
 				fmt.Printf("%s\n", string(j))
 			}
 			var ss hivev1.SelectorSyncSet
-			ss = pkg.CreateSelectorSyncSet(args[0], selector, resources, patches)
+			ss = pkg.CreateSelectorSyncSet(args[0], selector, resources, patches, applyMode)
 			j, err := json.MarshalIndent(&ss, "", "    ")
 			if err != nil {
 				log.Fatalf("error: %v", err)
