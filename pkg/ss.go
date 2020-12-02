@@ -68,7 +68,9 @@ func loadSecrets(name, prefix, paths string) ([]hivev1.SecretMapping, error) {
 			return nil
 		})
 		if err != nil {
-			return secrets, err
+			if _, ok := err.(*os.PathError); !ok {
+				return secrets, err
+			}
 		}
 	}
 	return secrets, nil
@@ -108,7 +110,9 @@ func loadResources(paths string) ([]runtime.RawExtension, error) {
 			return nil
 		})
 		if err != nil {
-			return resources, err
+			if _, ok := err.(*os.PathError); !ok {
+				return resources, err
+			}
 		}
 	}
 	return resources, nil
@@ -140,7 +144,9 @@ func loadPatches(paths string) ([]hivev1.SyncObjectPatch, error) {
 			return nil
 		})
 		if err != nil {
-			return patches, err
+			if _, ok := err.(*os.PathError); !ok {
+				return patches, err
+			}
 		}
 	}
 	return patches, nil
@@ -188,7 +194,9 @@ func TransformSecrets(name, prefix, paths string) []corev1.Secret {
 			return nil
 		})
 		if err != nil {
-			log.Println(err)
+			if _, ok := err.(*os.PathError); !ok {
+				log.Println(err)
+			}
 		}
 	}
 	return secrets
