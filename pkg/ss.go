@@ -8,11 +8,13 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/yaml"
 )
@@ -95,16 +97,12 @@ func loadResources(paths string) ([]runtime.RawExtension, error) {
 				if err != nil {
 					return err
 				}
-				var j map[string]interface{}
-				json.Unmarshal(jsonBytes, &j)
-				kind, ok := j["kind"].(string)
-				if ok && kind != "Secret" {
-					var r = runtime.RawExtension{}
-					err = r.UnmarshalJSON(jsonBytes)
-					if err != nil {
-						return err
-					}
-					resources = append(resources, r)
+				r, err := rawExtensionWithUnstructured(jsonBytes)
+				if err != nil {
+					return err
+				}
+				if !isSecret(r.Object) {
+					resources = append(resources, *r)
 				}
 			}
 			return nil
@@ -115,6 +113,12 @@ func loadResources(paths string) ([]runtime.RawExtension, error) {
 			}
 		}
 	}
+
+	// Attempt to sort resources
+	sort.Slice(resources, func(i, j int) bool {
+		return isLessThan(resources[i], resources[j])
+	})
+
 	return resources, nil
 }
 
@@ -200,6 +204,102 @@ func TransformSecrets(name, prefix, paths string) []corev1.Secret {
 		}
 	}
 	return secrets
+}
+
+// Taken directly from kustomise
+// https://github.com/kubernetes-sigs/kustomize/blob/master/kyaml/resid/gvk.go
+//
+// An attempt to order things to help k8s, e.g.
+// a Service should come before things that refer to it.
+// Namespace should be first.
+// In some cases order just specified to provide determinism.
+var orderFirst = []string{
+	"Namespace",
+	"ResourceQuota",
+	"StorageClass",
+	"CustomResourceDefinition",
+	"ServiceAccount",
+	"PodSecurityPolicy",
+	"SecurityContextConstraints",
+	"Role",
+	"ClusterRole",
+	"RoleBinding",
+	"ClusterRoleBinding",
+	"ConfigMap",
+	"Secret",
+	"Endpoints",
+	"Service",
+	"LimitRange",
+	"PriorityClass",
+	"PersistentVolume",
+	"PersistentVolumeClaim",
+	"Deployment",
+	"StatefulSet",
+	"CronJob",
+	"PodDisruptionBudget",
+	"CatalogSource",
+	"OperatorGroup",
+	"Subscription",
+}
+var orderLast = []string{
+	"MutatingWebhookConfiguration",
+	"ValidatingWebhookConfiguration",
+}
+var typeOrders = func() map[string]int {
+	m := map[string]int{}
+	for i, n := range orderFirst {
+		m[n] = -len(orderFirst) + i
+	}
+	for i, n := range orderLast {
+		m[n] = 1 + i
+	}
+	return m
+}()
+
+// isLessThan returns true if i is less important than j
+func isLessThan(i, j runtime.RawExtension) bool {
+	indexI := typeOrders[i.Object.GetObjectKind().GroupVersionKind().Kind]
+	indexJ := typeOrders[j.Object.GetObjectKind().GroupVersionKind().Kind]
+	if indexI != indexJ {
+		return indexI < indexJ
+	}
+	return i.Object.GetObjectKind().GroupVersionKind().String() < j.Object.GetObjectKind().GroupVersionKind().String()
+}
+
+func convertRawExtension(in *runtime.RawExtension) error {
+	u := &unstructured.Unstructured{}
+	err := yaml.UnmarshalStrict(in.Raw, u)
+	if err != nil {
+		return err
+	}
+	in.Object = u
+	return nil
+}
+
+func rawExtensionWithUnstructured(data []byte) (*runtime.RawExtension, error) {
+	re := &runtime.RawExtension{}
+	err := yaml.Unmarshal(data, re)
+	if err != nil {
+		return nil, err
+	}
+	err = convertRawExtension(re)
+	if err != nil {
+		return nil, err
+	}
+	return re, nil
+}
+
+func isSecret(o runtime.Object) bool {
+	if o == nil {
+		return false
+	}
+	if o.GetObjectKind().GroupVersionKind().Kind != "Secret" {
+		return false
+	}
+	if o.GetObjectKind().GroupVersionKind().Version != "v1" {
+		return false
+	}
+	return true
 }
 
 func CreateSelectorSyncSet(name, selector, resourcesPath, patchesPath, applyMode string) hivev1.SelectorSyncSet {
