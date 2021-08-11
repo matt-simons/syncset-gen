@@ -240,6 +240,7 @@ var orderFirst = []string{
 	"CatalogSource",
 	"OperatorGroup",
 	"Subscription",
+	"ConstraintTemplate",
 }
 var orderLast = []string{
 	"MutatingWebhookConfiguration",
